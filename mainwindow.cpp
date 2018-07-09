@@ -9,6 +9,8 @@ using >ifconfig -a to get the can device name("can0 as default")
 >sudo ip link set can0 up
 
 */
+#define SLAVE_HAND_PORT 12625
+char slave_hand_addr[20] = "192.168.1.102";
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -21,7 +23,7 @@ MainWindow::MainWindow(QWidget *parent) :
     fromSlaveHand = new QUdpSocket(this);
     fromSlaveHand->bind(QHostAddress::Any,17362);//slave hand transmit force data with this port
     timer = new QTimer(this);
-    timer->start(10);//10ms
+    timer->start(10);// send pos information to slave device every 10ms
     connect(timer,SIGNAL(timeout()),this,SLOT(timer_out()));
     connect(fromSlaveHand,SIGNAL(readyRead()),this,SLOT(slave_hand_recv()));
 
@@ -49,9 +51,12 @@ void MainWindow::can_frame_ready(){
     if(canid == cfg_UploadID_list[0]){
         if(mag){
             ui->lineEdit_l1->setText(datstr);
+            joint_data.joint_pos[0] = dat;
+            joint_data.joint_pos_valid[0] = true;
         }
         else{
             ui->lineEdit_l1->setText("Mag error!");
+            joint_data.joint_pos_valid[0] = false;
         }
     }
 
@@ -80,11 +85,12 @@ void MainWindow::get_configuration(){
 }
 
 void MainWindow::timer_out(){
-
-
+    // send pos information to slave device every 10ms
+    toSlaveHand->writeDatagram((char*)(&joint_data), sizeof(JOINT_DAT_TYPE), QHostAddress(slave_hand_addr),SLAVE_HAND_PORT);
 }
 
 void MainWindow::setup_can(){
+    int i;
     if(QCanBus::instance()->plugins().contains("socketcan")){
 
         qDebug()<<"socketcan plugins available!";
@@ -107,10 +113,26 @@ void MainWindow::setup_can(){
     else
         isCanDeviceConnected = false;
 
+    // initialize the data struct
+    for(i = 0; i < 14; i++){
+        joint_data.joint_pos[i] = 0;
+        joint_data.joint_force[i] = 0;
+        joint_data.joint_pos_valid[i] = false;
+
+    }
+
 }
 
 void MainWindow::slave_hand_recv(){
+    JOINT_DAT_TYPE recv_frame;
+    fromSlaveHand->readDatagram((char*)(&recv_frame),sizeof(JOINT_DAT_TYPE));
     QCanBusFrame frame;
     frame.setFrameId(0);
+    QByteArray payload;
+    payload.resize(2);
+    payload[0] = 0x0;
+    payload[1] = 0x0;
+    frame.setPayload(payload);
+    //candev->writeFrame(frame);
 
 }

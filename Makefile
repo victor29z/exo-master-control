@@ -202,7 +202,8 @@ DIST          = /opt/Qt5.7.0/5.7/gcc_64/mkspecs/features/spec_pre.prf \
 		/opt/Qt5.7.0/5.7/gcc_64/mkspecs/features/exceptions.prf \
 		/opt/Qt5.7.0/5.7/gcc_64/mkspecs/features/yacc.prf \
 		/opt/Qt5.7.0/5.7/gcc_64/mkspecs/features/lex.prf \
-		can_server.pro mainwindow.h main.cpp \
+		can_server.pro mainwindow.h \
+		joint_data_type.h main.cpp \
 		mainwindow.cpp
 QMAKE_TARGET  = can_server
 DESTDIR       = 
@@ -540,7 +541,7 @@ dist: distdir FORCE
 distdir: FORCE
 	@test -d $(DISTDIR) || mkdir -p $(DISTDIR)
 	$(COPY_FILE) --parents $(DIST) $(DISTDIR)/
-	$(COPY_FILE) --parents mainwindow.h $(DISTDIR)/
+	$(COPY_FILE) --parents mainwindow.h joint_data_type.h $(DISTDIR)/
 	$(COPY_FILE) --parents main.cpp mainwindow.cpp $(DISTDIR)/
 	$(COPY_FILE) --parents mainwindow.ui $(DISTDIR)/
 
@@ -687,6 +688,7 @@ moc_mainwindow.cpp: /opt/Qt5.7.0/5.7/gcc_64/include/QtWidgets/QMainWindow \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtCore/QTimer \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtCore/qtimer.h \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtCore/qbasictimer.h \
+		joint_data_type.h \
 		mainwindow.h \
 		/opt/Qt5.7.0/5.7/gcc_64/bin/moc
 	/opt/Qt5.7.0/5.7/gcc_64/bin/moc $(DEFINES) -I/opt/Qt5.7.0/5.7/gcc_64/mkspecs/linux-g++ -I/home/zl/prog-dev/can_server -I/opt/Qt5.7.0/5.7/gcc_64/include -I/opt/Qt5.7.0/5.7/gcc_64/include/QtWidgets -I/opt/Qt5.7.0/5.7/gcc_64/include/QtGui -I/opt/Qt5.7.0/5.7/gcc_64/include/QtSerialBus -I/opt/Qt5.7.0/5.7/gcc_64/include/QtNetwork -I/opt/Qt5.7.0/5.7/gcc_64/include/QtCore -I/usr/include/c++/5 -I/usr/include/x86_64-linux-gnu/c++/5 -I/usr/include/c++/5/backward -I/usr/lib/gcc/x86_64-linux-gnu/5/include -I/usr/local/include -I/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed -I/usr/include/x86_64-linux-gnu -I/usr/include mainwindow.h -o moc_mainwindow.cpp
@@ -827,6 +829,7 @@ main.o: main.cpp mainwindow.h \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtCore/QTimer \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtCore/qtimer.h \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtCore/qbasictimer.h \
+		joint_data_type.h \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtWidgets/QApplication \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtWidgets/qapplication.h \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtCore/qcoreapplication.h \
@@ -953,6 +956,7 @@ mainwindow.o: mainwindow.cpp mainwindow.h \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtCore/QTimer \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtCore/qtimer.h \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtCore/qbasictimer.h \
+		joint_data_type.h \
 		ui_mainwindow.h \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtCore/QVariant \
 		/opt/Qt5.7.0/5.7/gcc_64/include/QtWidgets/QAction \

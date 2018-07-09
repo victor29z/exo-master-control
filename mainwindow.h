@@ -9,6 +9,7 @@
 #include <QFile>
 #include <QUdpSocket>
 #include <QTimer>
+#include "joint_data_type.h"
 namespace Ui {
 class MainWindow;
 }
@@ -38,6 +39,8 @@ private:
     QUdpSocket* fromSlaveHand;
     QTimer* timer;
     bool isCanDeviceConnected;
+    JOINT_DAT_TYPE joint_data;
 };
+
 
 #endif // MAINWINDOW_H
