@@ -9,23 +9,56 @@ using >ifconfig -a to get the can device name("can0 as default")
 >sudo ip link set can0 up
 
 */
-#define SLAVE_HAND_PORT 12625
-char slave_hand_addr[20] = "192.168.1.102";
+#define TO_SLAVE_HAND_PORT 12625
+#define FROM_SLAVE_HAND_PORT 17362
+char slave_hand_addr[20] = "192.168.1.140";
 
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
+
+    int i;
     ui->setupUi(this);
     setup_can();
     toSlaveHand = new QUdpSocket(this);
     fromSlaveHand = new QUdpSocket(this);
-    fromSlaveHand->bind(QHostAddress::Any,17362);//slave hand transmit force data with this port
+    fromSlaveHand->bind(QHostAddress::Any,FROM_SLAVE_HAND_PORT);//slave hand transmit force data with this port
     timer = new QTimer(this);
     timer->start(10);// send pos information to slave device every 10ms
     connect(timer,SIGNAL(timeout()),this,SLOT(timer_out()));
     connect(fromSlaveHand,SIGNAL(readyRead()),this,SLOT(slave_hand_recv()));
+
+    // setup ui
+    LETable[0] = ui->lineEdit_l1;
+    LETable[1] = ui->lineEdit_l2;
+    LETable[2] = ui->lineEdit_l3;
+    LETable[3] = ui->lineEdit_l4;
+    LETable[4] = ui->lineEdit_l5;
+    LETable[5] = ui->lineEdit_l6;
+    LETable[6] = ui->lineEdit_lh;
+
+    LETable[7] = ui->lineEdit_r1;
+    LETable[8] = ui->lineEdit_r2;
+    LETable[9] = ui->lineEdit_r3;
+    LETable[10] = ui->lineEdit_r4;
+    LETable[11] = ui->lineEdit_r5;
+    LETable[12] = ui->lineEdit_r6;
+    LETable[13] = ui->lineEdit_rh;
+
+
+
+    for(i = 0;i < 14; i++){
+        pb_reset[i] = new QPushButton("reset",this);
+        int tmp_pos_left = LETable[i]->geometry().right();
+        int tmp_pos_top = LETable[i]->geometry().bottom();
+
+        pb_reset[i]->setGeometry(QRect(tmp_pos_left+20,tmp_pos_top,60,20));
+        connect(pb_reset[i],SIGNAL(pressed()),this,SLOT(reset_but_clicked()));
+
+
+    }
 
 
 }
@@ -37,35 +70,50 @@ MainWindow::~MainWindow()
 
 void MainWindow::can_frame_ready(){
     QCanBusFrame frame = candev->readFrame();
-    int canid = frame.frameId();
+    unsigned int canid = frame.frameId();
     int len = frame.payload().length();
     int dat,mag;
+    int i;
     QByteArray frame_payload = frame.payload();
     dat = (unsigned char)frame_payload[0] *256 + (unsigned char)frame_payload[1];
     mag = (unsigned char)frame_payload[2];
-    QString datstr,framestr;
-    datstr.setNum(dat);
-    //framestr.sprintf("id = 0x%x, len = %d, %d, %d, %d",canid,len,frame_payload[0],frame_payload[1],frame_payload[2]);
-    qDebug()<<framestr<<endl;
 
-    if(canid == cfg_UploadID_list[0]){
-        if(mag){
-            ui->lineEdit_l1->setText(datstr);
-            joint_data.joint_pos[0] = dat;
-            joint_data.joint_pos_valid[0] = true;
+
+    //framestr.sprintf("id = 0x%x, len = %d, %d, %d, %d",canid,len,frame_payload[0],frame_payload[1],frame_payload[2]);
+    //qDebug()<<framestr<<endl;
+
+    for(i = 0; i < 14; i++){
+        if(canid == cfg_UploadID_list[i]){
+            joint_data.joint_online[i] = true;
+            if(mag){
+
+                joint_data.joint_pos_raw[i] = dat;
+                joint_data.joint_pos_valid[i] = true;
+
+                if(joint_data.joint_pos_raw[i] > cfg_Data_offset[i])
+                    joint_data.joint_pos_abs[i] = joint_data.joint_pos_raw[i] - cfg_Data_offset[i];
+                else
+                    joint_data.joint_pos_abs[i] = joint_data.joint_pos_raw[i] + 4095 - cfg_Data_offset[i];
+
+                //datstr.setNum(t);
+                //LETable[i]->setText(datstr);
+            }
+            else{
+                //LETable[i]->setText("Mag error!");
+                joint_data.joint_pos_valid[i] = false;
+            }
+            break;
         }
-        else{
-            ui->lineEdit_l1->setText("Mag error!");
-            joint_data.joint_pos_valid[0] = false;
-        }
+
     }
+
 
 
 
 
 }
 
-
+//read id configuration from the config file
 void MainWindow::get_configuration(){
     int i;
     cfg = new QFile("paramlist.cfg");
@@ -79,18 +127,84 @@ void MainWindow::get_configuration(){
         cfg_DownloadID_list[i] = list[3].toInt();
     }
     if(i != 14)
-        qDebug()<<"configuration bad!";
+        qDebug()<<"bad configuration!";
 
 
 }
 
+void MainWindow::save_configuration(){
+    int i;
+    //cfg file is already opened
+    //cfg = new QFile("paramlist.cfg");
+    //cfg->open(QIODevice::ReadOnly | QIODevice::Text);
+    cfg->seek(0);
+    QTextStream out(cfg);
+    for(i = 0; i < 14 ; i++){
+        out << "ID"<< i << ","
+            << cfg_UploadID_list[i] << ","
+            << cfg_Data_offset[i]   << ","
+            << cfg_DownloadID_list[i] << endl;
+    }
+
+}
 void MainWindow::timer_out(){
     // send pos information to slave device every 10ms
-    toSlaveHand->writeDatagram((char*)(&joint_data), sizeof(JOINT_DAT_TYPE), QHostAddress(slave_hand_addr),SLAVE_HAND_PORT);
+    int i;
+    toSlaveHand->writeDatagram((char*)(&joint_data), sizeof(JOINT_DAT_TYPE), QHostAddress(slave_hand_addr),TO_SLAVE_HAND_PORT);
+
+// debug force feedback with slider
+    if(ui->cb_LH->isChecked()){
+        QCanBusFrame frame;
+        QByteArray frame_payload;
+        frame_payload[0] = 1;//1 for LH, 2 for RH
+        frame_payload[1] = ui->sld_LH->value();
+        frame_payload.resize(2);
+        frame.setFrameId(cfg_DownloadID_list[6]);
+        frame.setPayload(frame_payload);
+
+        candev->writeFrame(frame);
+
+    }
+
+    if(ui->cb_RH->isChecked()){
+        QCanBusFrame frame;
+        QByteArray frame_payload;
+        frame_payload[0] = 2;//1 for LH, 2 for RH
+        frame_payload[1] = ui->sld_RH->value();
+        frame_payload.resize(2);
+        frame.setFrameId(cfg_DownloadID_list[13]);
+        frame.setPayload(frame_payload);
+
+        candev->writeFrame(frame);
+
+    }
+// show joint position
+    for(i = 0; i < 14; i++){
+        if(joint_data.joint_online[i]){
+            joint_data.joint_online[i] = false;
+            if(joint_data.joint_pos_valid[i]){
+                QString datstr;
+                datstr.setNum(joint_data.joint_pos_abs[i]);
+                LETable[i]->setText(datstr);
+            }
+            else{
+                LETable[i]->setText("Mag error!");
+            }
+        }
+        else{
+
+            LETable[i]->setText("Joint offline");
+        }
+    }
+
 }
 
 void MainWindow::setup_can(){
     int i;
+    // need to run with root privilege
+    system("ip link set can0 down");
+    system("ip link set can0 type can bitrate 50000");
+    system("ip link set can0 up");
     if(QCanBus::instance()->plugins().contains("socketcan")){
 
         qDebug()<<"socketcan plugins available!";
@@ -115,9 +229,11 @@ void MainWindow::setup_can(){
 
     // initialize the data struct
     for(i = 0; i < 14; i++){
-        joint_data.joint_pos[i] = 0;
+        joint_data.joint_pos_raw[i] = 0;
+        joint_data.joint_pos_abs[i] = 0;
         joint_data.joint_force[i] = 0;
         joint_data.joint_pos_valid[i] = false;
+        joint_data.joint_online[i] = false;
 
     }
 
@@ -127,12 +243,40 @@ void MainWindow::slave_hand_recv(){
     JOINT_DAT_TYPE recv_frame;
     fromSlaveHand->readDatagram((char*)(&recv_frame),sizeof(JOINT_DAT_TYPE));
     QCanBusFrame frame;
-    frame.setFrameId(0);
-    QByteArray payload;
-    payload.resize(2);
-    payload[0] = 0x0;
-    payload[1] = 0x0;
-    frame.setPayload(payload);
-    //candev->writeFrame(frame);
+    QByteArray frame_payload;
 
+    frame_payload[0] = 1;//1 for LH, 2 for RH
+    frame_payload[1] = recv_frame.joint_force[6];
+    frame_payload.resize(2);
+    frame.setFrameId(cfg_DownloadID_list[6]);
+    frame.setPayload(frame_payload);
+
+    candev->writeFrame(frame);
+
+    frame_payload[0] = 2;//1 for LH, 2 for RH
+    frame_payload[1] = recv_frame.joint_force[13];
+    frame_payload.resize(2);
+    frame.setFrameId(cfg_DownloadID_list[13]);
+    frame.setPayload(frame_payload);
+
+    candev->writeFrame(frame);
+
+}
+
+void MainWindow::reset_but_clicked(){
+    int i;
+    for(i = 0; i < 14; i ++){
+        if(pb_reset[i]->isDown()){
+            //qDebug()<<"push button"<<i<<"is clicked";
+            cfg_Data_offset[i] = joint_data.joint_pos_raw[i];
+
+        }
+
+    }
+
+}
+
+void MainWindow::on_pb_save_cfg_clicked()
+{
+    save_configuration();
 }
