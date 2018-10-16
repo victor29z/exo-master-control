@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QCanBus>
+#include <QCanBusDeviceInfo>
 #include <QDebug>
 #include <QByteArray>
 #include <QString>
@@ -37,9 +38,9 @@ private:
     Ui::MainWindow *ui;
     QCanBusDevice *candev;
     QFile *cfg;
-    unsigned int cfg_UploadID_list[14];
-    unsigned int cfg_DownloadID_list[14];
-    unsigned int cfg_Data_offset[14];
+    unsigned int cfg_UploadID_list[16];
+    unsigned int cfg_DownloadID_list[16];
+    unsigned int cfg_Data_offset[16];
     void get_configuration(void);
     void save_configuration(void);
     void setup_can(void);
@@ -48,8 +49,10 @@ private:
     QTimer* timer;
     bool isCanDeviceConnected;
     JOINT_DAT_TYPE joint_data;
-    QLineEdit * LETable[14];
-    QPushButton* pb_reset[14];
+    QLineEdit * LETable[16];
+    QPushButton* pb_reset[16];
+
+    unsigned char post_data[5];
 };
 
 
