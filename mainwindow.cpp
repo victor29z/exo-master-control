@@ -63,6 +63,8 @@ MainWindow::MainWindow(QWidget *parent) :
     }
 
 
+
+
 }
 
 MainWindow::~MainWindow()
@@ -230,21 +232,20 @@ void MainWindow::timer_out(){
 
 void MainWindow::setup_can(){
     int i;
+    //pcan_dev->pcan_init();
+
+    return;
     // need to run with root privilege
-    system("ip link set can0 down");
-    system("ip link set can0 type can bitrate 50000");
-    system("ip link set can0 up");
-    //if(QCanBus::instance()->plugins().contains("socketcan")){
-    if(QCanBus::instance()->plugins().contains("peakcan")){
+    //system("ip link set can0 down");
+    //system("ip link set can0 type can bitrate 50000");
+    //system("ip link set can0 up");
+    if(QCanBus::instance()->plugins().contains("socketcan")){
+    //if(QCanBus::instance()->plugins().contains("peakcan")){
 
         qDebug()<<"socketcan plugins available!";
         candev = QCanBus::instance()->createDevice("socketcan","can0");
         //candev = QCanBus::instance()->createDevice("peakcan","usb0");
-        const QList<QCanBusDeviceInfo> devices = QCanBus::instance()->availableDevices("peakcan");
-        qDebug() << "Listsize         : " << devices.count();
-        foreach (const QCanBusDeviceInfo &info, QCanBus::instance()->availableDevices("peakcan")) {
-            qDebug() << "Name         : " << info.name();
-        }
+
         if(candev->connectDevice()){
             qDebug()<<"can device is connected!";
             ui->statusBar->showMessage("can device connected");

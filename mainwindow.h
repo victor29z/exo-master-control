@@ -14,6 +14,7 @@
 #include <QPushButton>
 #include "joint_data_type.h"
 #include "stdlib.h"
+#include "pcan_basic.h"
 namespace Ui {
 class MainWindow;
 }
@@ -51,7 +52,7 @@ private:
     JOINT_DAT_TYPE joint_data;
     QLineEdit * LETable[16];
     QPushButton* pb_reset[16];
-
+    pcan_basic* pcan_dev;
     unsigned char post_data[5];
 };
 
